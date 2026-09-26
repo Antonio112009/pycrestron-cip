@@ -13,7 +13,6 @@ from .exceptions import (
 from .protocol import JoinType, JoinUpdate
 
 __all__ = [
-    "__version__",
     "DEFAULT_PORT",
     "DEFAULT_TLS_PORT",
     "AuthError",
@@ -26,4 +25,5 @@ __all__ = [
     "JoinType",
     "JoinUpdate",
     "NotConnectedError",
+    "__version__",
 ]

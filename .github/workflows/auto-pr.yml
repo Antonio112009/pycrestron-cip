@@ -81,7 +81,7 @@ jobs:
 
             echo ''
             echo '---'
-            echo '*Auto-generated from `development` branch.*'
+            echo "*Auto-generated from the development branch.*"
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 

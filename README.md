@@ -67,10 +67,10 @@ def on_join(update: JoinUpdate) -> None:
 
 async def main() -> None:
     async with CipClient("192.168.1.10", 0x03) as panel:
-        panel.subscribe(on_join)              # everything the processor sends
-        await panel.pulse(101)                # tap button d101
-        print(panel.get_analog(361))          # last value of a361
-        panel.set_serial(10, "hello")         # latched serial output
+        panel.subscribe(on_join)  # everything the processor sends
+        await panel.pulse(101)  # tap button d101
+        print(panel.get_analog(361))  # last value of a361
+        panel.set_serial(10, "hello")  # latched serial output
         await asyncio.sleep(30)
 
 
