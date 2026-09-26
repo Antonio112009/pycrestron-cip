@@ -29,6 +29,9 @@ dependencies = []
 test = ["pytest>=9", "pytest-asyncio>=1.2", "pytest-cov>=7"]
 dev = ["pycrestron-cip[test]", "ruff>=0.16"]
 
+[project.scripts]
+pycrestron-cip-probe = "pycrestron_cip.probe:main"
+
 [project.urls]
 Homepage = "https://github.com/Antonio112009/pycrestron-cip"
 Documentation = "https://github.com/Antonio112009/pycrestron-cip#readme"

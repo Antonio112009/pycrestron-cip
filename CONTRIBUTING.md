@@ -74,9 +74,9 @@ src/pycrestron_cip/
 ├── client.py              # CipClient: connection, sync, heartbeats, reconnect, join caches
 ├── protocol.py            # Frame encoding/decoding (no I/O)
 ├── exceptions.py          # Exception hierarchy
+├── probe.py               # pycrestron-cip-probe: read-only recording tool
 └── testing.py             # FakeProcessor: a CIP server for tests
 docs/protocol.md           # Wire format notes and hardware findings
-examples/probe.py          # Read-only probe: record what a processor sends
 ```
 
 ## License
