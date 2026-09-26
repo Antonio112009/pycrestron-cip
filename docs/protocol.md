@@ -52,6 +52,15 @@ Where sources disagree, both views are noted. **Verified** marks behaviour we ob
 **differ from what it believes the panel shows**. Values on "paged" panels, where the same joins
 show different rooms, therefore arrive only when they change relative to the previous page.
 
+**Verified** on a 3-Series (2026-09-26, read-only probe, `examples/probe.py`):
+- The initial dump **packs several joins into one sub-packet**: `0f 00` + 7 digital pairs, `09 14` + 2 analog
+  pairs, smart-object blocks of 32 digitals. `python-cipclient` (and this library before the fix) read only the
+  first pair, losing most of the dump. Live changes afterwards arrived one per packet.
+- The processor never sent a heartbeat request (0x0D) in 2 minutes; it only answered ours (0x0E).
+- Connect result was `0000001f`; program status on connect `0f 02` (ready). Registration to synced: 0.7 s.
+- Unknown: command `03 19` with ASCII payloads (`CLCM`, `jBjWjYje`), and digitals 27213/27217/27218/27221 = off
+  sent twice right after sync.
+
 ## Prior art
 
 | Project | Language | License | Notes |

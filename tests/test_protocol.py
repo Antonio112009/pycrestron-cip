@@ -79,6 +79,18 @@ def test_decode_several_subpackets_in_one_frame():
     assert msgs == [JoinUpdate(JoinType.DIGITAL, 1, True), JoinUpdate(JoinType.DIGITAL, 2, False)]
 
 
+def test_decode_packed_joins_from_real_dump():
+    # Initial dump captured from a 3-Series: several joins share one sub-packet.
+    digitals = decode(h("05 0012 0000 0f 00 3100 3b00 6b00 5d01 f301 b70b bf0b"))
+    assert [(u.join, u.value) for u in digitals] == [
+        (50, True), (60, True), (108, True), (350, True), (500, True), (3000, True), (3008, True)]
+    assert decode(h("05 000c 0000 09 14 000b 0001 000e 0001")) == [
+        JoinUpdate(JoinType.ANALOG, 12, 1), JoinUpdate(JoinType.ANALOG, 15, 1)]
+    nested = decode(h("05 0012 0000 0f 38 000000 01 09 00 1100 da07 db07 dc87"))
+    assert nested == [JoinUpdate(JoinType.DIGITAL, 18, True, 1), JoinUpdate(JoinType.DIGITAL, 2011, True, 1),
+                      JoinUpdate(JoinType.DIGITAL, 2012, True, 1), JoinUpdate(JoinType.DIGITAL, 2013, False, 1)]
+
+
 def test_decode_serial_variants():
     assert _assemble(decode(h("12 000a 0000 0006 34 0009 03 4869"))) == "Hi"
     assert _assemble(decode(p.build_serial(3, "Кухня")[0])) == "Кухня"

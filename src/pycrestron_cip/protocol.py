@@ -237,12 +237,16 @@ def _decode_cresnet(data: bytes, *, wide: bool, smart_object: int | None = None
 
 def _decode_sub(kind: int, body: bytes, wide: bool, so: int | None) -> Iterator[Message]:
     match kind:
+        # The processor packs several joins into one digital/analog sub-packet (seen in the
+        # initial dump on a 3-Series), so walk every pair, not just the first.
         case Cresnet.DIGITAL | Cresnet.DIGITAL_REPEAT:
-            raw = body[0] | ((body[1] & 0x7F) << 8)
-            yield JoinUpdate(JoinType.DIGITAL, raw + 1, not body[1] & 0x80, so)
+            for i in range(0, len(body) - 1, 2):
+                raw = body[i] | ((body[i + 1] & 0x7F) << 8)
+                yield JoinUpdate(JoinType.DIGITAL, raw + 1, not body[i + 1] & 0x80, so)
         case Cresnet.ANALOG:
-            yield JoinUpdate(JoinType.ANALOG, int.from_bytes(body[0:2], "big") + 1,
-                             int.from_bytes(body[2:4], "big"), so)
+            for i in range(0, len(body) - 3, 4):
+                yield JoinUpdate(JoinType.ANALOG, int.from_bytes(body[i:i + 2], "big") + 1,
+                                 int.from_bytes(body[i + 2:i + 4], "big"), so)
         case Cresnet.ANALOG_LEGACY:
             if len(body) == 3:  # 1-byte join
                 yield JoinUpdate(JoinType.ANALOG, body[0] + 1, int.from_bytes(body[1:3], "big"), so)
