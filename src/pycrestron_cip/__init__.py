@@ -1,4 +1,6 @@
 """Crestron CIP (Crestron-over-IP) panel client for asyncio."""
+
+from .__version__ import __version__
 from .client import DEFAULT_PORT, DEFAULT_TLS_PORT, CipClient, ConnectionState
 from .exceptions import (
     AuthError,
@@ -11,6 +13,7 @@ from .exceptions import (
 from .protocol import JoinType, JoinUpdate
 
 __all__ = [
+    "__version__",
     "DEFAULT_PORT",
     "DEFAULT_TLS_PORT",
     "AuthError",
@@ -24,4 +27,3 @@ __all__ = [
     "JoinUpdate",
     "NotConnectedError",
 ]
-__version__ = "0.1.0.dev0"

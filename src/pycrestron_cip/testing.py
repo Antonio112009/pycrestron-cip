@@ -9,6 +9,7 @@ frames split across writes or coalesced into one write.
         proc.set_analog(361, 65535)
         client = CipClient("127.0.0.1", 0x03, port=proc.port)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -39,7 +40,7 @@ def packed_analog_frame(values: dict[int, int]) -> bytes:
 
 def _chunks(values: dict, size: int) -> list[dict]:
     items = list(values.items())
-    return [dict(items[i:i + size]) for i in range(0, len(items), size)]
+    return [dict(items[i : i + size]) for i in range(0, len(items), size)]
 
 
 def serial_frame(join: int, text: str, flags: int = p.SERIAL_COMPLETE, *, utf16: bool = False) -> bytes:
@@ -52,8 +53,15 @@ def serial_frame(join: int, text: str, flags: int = p.SERIAL_COMPLETE, *, utf16:
 class FakeProcessor:
     """Minimal CIP server on 127.0.0.1 with a join table and a record of what panels sent."""
 
-    def __init__(self, ipids: set[int] | None = None, *, program_status: int = p.ProgramStatus.READY,
-                 username: str | None = None, password: str | None = None, packed_dump: bool = True) -> None:
+    def __init__(
+        self,
+        ipids: set[int] | None = None,
+        *,
+        program_status: int = p.ProgramStatus.READY,
+        username: str | None = None,
+        password: str | None = None,
+        packed_dump: bool = True,
+    ) -> None:
         self.ipids = ipids if ipids is not None else {0x03}
         self.program_status = program_status
         self.credentials = f"{username}:{password}" if username is not None else None
@@ -63,9 +71,9 @@ class FakeProcessor:
         self.serial: dict[int, str] = {}
         self.received: list[p.Message] = []  # joins, commands, heartbeats from panels
         self.connections = 0
-        self.mute = False          # ignore everything, send nothing (half-open connection)
+        self.mute = False  # ignore everything, send nothing (half-open connection)
         self.split_writes = False  # send every frame in two writes
-        self.coalesce = False      # buffer frames and send them in one write
+        self.coalesce = False  # buffer frames and send them in one write
         self.on_join: Callable[[FakeProcessor, p.JoinUpdate], None] | None = None  # "the program"
         self._server: asyncio.Server | None = None
         self._writers: set[asyncio.StreamWriter] = set()
@@ -132,8 +140,7 @@ class FakeProcessor:
         self._writers.clear()
 
     def joins_received(self, join_type: p.JoinType | None = None) -> list[p.JoinUpdate]:
-        return [m for m in self.received if isinstance(m, p.JoinUpdate)
-                and (join_type is None or m.type == join_type)]
+        return [m for m in self.received if isinstance(m, p.JoinUpdate) and (join_type is None or m.type == join_type)]
 
     # --- server --------------------------------------------------------------------
 
@@ -162,8 +169,9 @@ class FakeProcessor:
         match frame_type:
             case p.FrameType.CONNECT:
                 ok = payload[5] in self.ipids
-                self._reply(writer, p.frame(p.FrameType.CONNECT_RESPONSE,
-                                            b"\x00\x00\x00\x1f" if ok else p.IPID_NOT_DEFINED))
+                self._reply(
+                    writer, p.frame(p.FrameType.CONNECT_RESPONSE, b"\x00\x00\x00\x1f" if ok else p.IPID_NOT_DEFINED)
+                )
                 return
             case p.FrameType.AUTH:
                 ok = payload[2:].rstrip(b"\x00").decode() == self.credentials

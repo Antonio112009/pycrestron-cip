@@ -9,6 +9,7 @@ Wire format: every frame is ``[type:1][length:2 BE][payload]``. Most payloads st
 sub-packets ``[len:1][type:1][data]``; extended frames (0x12) carry ``[len:2][type:1][data]``.
 Joins are 1-based in the API and 0-based on the wire.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -150,8 +151,18 @@ class Unknown:
     payload: bytes
 
 
-Message = (JoinUpdate | SerialChunk | CommandMessage | DateTimeMessage | ProgramStatusMessage
-           | ConnectResponse | AuthResponse | Heartbeat | Disconnect | Unknown)
+Message = (
+    JoinUpdate
+    | SerialChunk
+    | CommandMessage
+    | DateTimeMessage
+    | ProgramStatusMessage
+    | ConnectResponse
+    | AuthResponse
+    | Heartbeat
+    | Disconnect
+    | Unknown
+)
 
 
 # --- framing ----------------------------------------------------------------------
@@ -174,8 +185,8 @@ class FrameDecoder:
             length = int.from_bytes(self._buf[1:3], "big")
             if len(self._buf) < 3 + length:
                 break
-            frames.append((self._buf[0], bytes(self._buf[3:3 + length])))
-            del self._buf[:3 + length]
+            frames.append((self._buf[0], bytes(self._buf[3 : 3 + length])))
+            del self._buf[: 3 + length]
         return frames
 
     def reset(self) -> None:
@@ -221,18 +232,17 @@ def decode_frame(frame_type: int, payload: bytes) -> list[Message]:
     return [Unknown(frame_type, payload)]
 
 
-def _decode_cresnet(data: bytes, *, wide: bool, smart_object: int | None = None
-                    ) -> Iterator[Message]:
+def _decode_cresnet(data: bytes, *, wide: bool, smart_object: int | None = None) -> Iterator[Message]:
     """Walk ``[len][type][body]`` sub-packets (``len`` is 2 bytes when ``wide``)."""
     i, hdr = 0, 2 if wide else 1
     while i + hdr < len(data):
-        length = int.from_bytes(data[i:i + hdr], "big")
+        length = int.from_bytes(data[i : i + hdr], "big")
         if length == 0:
             break
         start, end = i + hdr, i + hdr + length
         if end > len(data):
             raise ProtocolError(f"sub-packet overruns frame: {data.hex()}")
-        yield from _decode_sub(data[start], data[start + 1:end], wide, smart_object)
+        yield from _decode_sub(data[start], data[start + 1 : end], wide, smart_object)
         i = end
 
 
@@ -246,14 +256,19 @@ def _decode_sub(kind: int, body: bytes, wide: bool, so: int | None) -> Iterator[
                 yield JoinUpdate(JoinType.DIGITAL, raw + 1, not body[i + 1] & 0x80, so)
         case Cresnet.ANALOG:
             for i in range(0, len(body) - 3, 4):
-                yield JoinUpdate(JoinType.ANALOG, int.from_bytes(body[i:i + 2], "big") + 1,
-                                 int.from_bytes(body[i + 2:i + 4], "big"), so)
+                yield JoinUpdate(
+                    JoinType.ANALOG,
+                    int.from_bytes(body[i : i + 2], "big") + 1,
+                    int.from_bytes(body[i + 2 : i + 4], "big"),
+                    so,
+                )
         case Cresnet.ANALOG_LEGACY:
             if len(body) == 3:  # 1-byte join
                 yield JoinUpdate(JoinType.ANALOG, body[0] + 1, int.from_bytes(body[1:3], "big"), so)
             else:
-                yield JoinUpdate(JoinType.ANALOG, int.from_bytes(body[0:2], "big") + 1,
-                                 int.from_bytes(body[2:4], "big"), so)
+                yield JoinUpdate(
+                    JoinType.ANALOG, int.from_bytes(body[0:2], "big") + 1, int.from_bytes(body[2:4], "big"), so
+                )
         case Cresnet.SERIAL | Cresnet.SERIAL_SHORT:
             yield SerialChunk(int.from_bytes(body[0:2], "big") + 1, body[2], body[3:], so)
         case Cresnet.COMMAND:
@@ -289,12 +304,12 @@ class SerialAssembler:
         elif key in self._parts:
             self._parts[key][1].extend(chunk.data)
         else:  # no start flag and nothing pending: the chunk is the whole value
-            return JoinUpdate(JoinType.SERIAL, chunk.join, decode_text(chunk.data, chunk.flags),
-                              chunk.smart_object)
+            return JoinUpdate(JoinType.SERIAL, chunk.join, decode_text(chunk.data, chunk.flags), chunk.smart_object)
         if chunk.flags & SERIAL_END:
             flags, buf = self._parts.pop(key)
-            return JoinUpdate(JoinType.SERIAL, chunk.join,
-                              decode_text(bytes(buf), flags | chunk.flags), chunk.smart_object)
+            return JoinUpdate(
+                JoinType.SERIAL, chunk.join, decode_text(bytes(buf), flags | chunk.flags), chunk.smart_object
+            )
         return None
 
     def reset(self) -> None:
@@ -345,8 +360,7 @@ def build_digital(join: int, value: bool, *, repeat: bool = False) -> bytes:
 def build_analog(join: int, value: int) -> bytes:
     if not 0 <= value <= MAX_ANALOG:
         raise ValueError(f"analog value out of range: {value}")
-    return frame(FrameType.DATA, b"\x00\x00\x05\x14" + _check_join(join).to_bytes(2, "big")
-                 + value.to_bytes(2, "big"))
+    return frame(FrameType.DATA, b"\x00\x00\x05\x14" + _check_join(join).to_bytes(2, "big") + value.to_bytes(2, "big"))
 
 
 def build_serial(join: int, text: str) -> list[bytes]:
@@ -356,7 +370,7 @@ def build_serial(join: int, text: str) -> list[bytes]:
         data, extra = text.encode("ascii"), 0
     else:
         data, extra = text.encode("utf-16-le"), SERIAL_UTF16
-    chunks = [data[i:i + SERIAL_CHUNK] for i in range(0, len(data), SERIAL_CHUNK)] or [b""]
+    chunks = [data[i : i + SERIAL_CHUNK] for i in range(0, len(data), SERIAL_CHUNK)] or [b""]
     frames = []
     for n, chunk in enumerate(chunks):
         flags = extra | (SERIAL_START if n == 0 else 0) | (SERIAL_END if n == len(chunks) - 1 else 0)

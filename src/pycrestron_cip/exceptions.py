@@ -1,4 +1,5 @@
 """Exceptions raised by :class:`pycrestron_cip.CipClient`."""
+
 from __future__ import annotations
 
 

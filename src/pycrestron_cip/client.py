@@ -1,4 +1,5 @@
 """asyncio client that connects to a Crestron processor as a panel (XPanel) over CIP."""
+
 from __future__ import annotations
 
 import asyncio
@@ -30,8 +31,7 @@ DEFAULT_TLS_PORT = 41796
 JoinCallback = Callable[[p.JoinUpdate], None]
 StateCallback = Callable[["ConnectionState"], None]
 _Key = tuple[p.JoinType, int, int | None]  # (type, join, smart object)
-_DEFAULTS: dict[p.JoinType, bool | int | str] = {
-    p.JoinType.DIGITAL: False, p.JoinType.ANALOG: 0, p.JoinType.SERIAL: ""}
+_DEFAULTS: dict[p.JoinType, bool | int | str] = {p.JoinType.DIGITAL: False, p.JoinType.ANALOG: 0, p.JoinType.SERIAL: ""}
 
 
 class ConnectionState(StrEnum):
@@ -111,8 +111,14 @@ class CipClient:
         self._background: asyncio.Task[None] | None = None
         self.last_rx: float | None = None
         self.last_error: str | None = None
-        self.stats = {"connects": 0, "disconnects": 0, "frames_rx": 0, "frames_tx": 0,
-                      "decode_errors": 0, "heartbeats_answered": 0}
+        self.stats = {
+            "connects": 0,
+            "disconnects": 0,
+            "frames_rx": 0,
+            "frames_tx": 0,
+            "decode_errors": 0,
+            "heartbeats_answered": 0,
+        }
 
     # --- lifecycle ---------------------------------------------------------------
 
@@ -179,8 +185,9 @@ class CipClient:
         """True once the processor has sent this join during the current connection."""
         return (join_type, join, smart_object) in self._inputs
 
-    def subscribe(self, callback: JoinCallback, join_type: p.JoinType | None = None,
-                  join: int | None = None) -> Callable[[], None]:
+    def subscribe(
+        self, callback: JoinCallback, join_type: p.JoinType | None = None, join: int | None = None
+    ) -> Callable[[], None]:
         """Call ``callback(update)`` for incoming joins (optionally filtered). Returns unsubscribe."""
         entry = (callback, join_type, join)
         self._join_subs.append(entry)
@@ -229,11 +236,17 @@ class CipClient:
     def snapshot(self) -> dict[str, Any]:
         """State for diagnostics (no credentials)."""
         return {
-            "host": self.host, "port": self.port, "ipid": f"0x{self.ipid:02X}", "tls": bool(self._ssl),
-            "state": self._state.value, "last_error": self.last_error,
+            "host": self.host,
+            "port": self.port,
+            "ipid": f"0x{self.ipid:02X}",
+            "tls": bool(self._ssl),
+            "state": self._state.value,
+            "last_error": self.last_error,
             "seconds_since_rx": None if self.last_rx is None else round(time.monotonic() - self.last_rx, 1),
-            "inputs": len(self._inputs), "outputs": len(self._outputs),
-            "pressed": sorted(self._pressed), "stats": dict(self.stats),
+            "inputs": len(self._inputs),
+            "outputs": len(self._outputs),
+            "pressed": sorted(self._pressed),
+            "stats": dict(self.stats),
         }
 
     # --- connection --------------------------------------------------------------
@@ -271,8 +284,7 @@ class CipClient:
                 self._write(p.build_command(p.Command.UPDATE_REQUEST))
                 await self._waiters["synced"]
         except TimeoutError as err:
-            await self._fail(CipTimeoutError(f"no answer from {self.host}:{self.port} "
-                                             f"while {self._state.value}"), err)
+            await self._fail(CipTimeoutError(f"no answer from {self.host}:{self.port} while {self._state.value}"), err)
         except OSError as err:
             await self._fail(CipConnectionError(f"cannot connect to {self.host}:{self.port}: {err}"), err)
         except CipError as err:

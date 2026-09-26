@@ -1,4 +1,5 @@
 """CipClient against the fake processor."""
+
 import asyncio
 
 import pytest
@@ -17,8 +18,14 @@ from pycrestron_cip import (
 from pycrestron_cip import protocol as p
 from pycrestron_cip.testing import FakeProcessor
 
-FAST = {"connect_timeout": 2, "heartbeat_interval": 0.2, "liveness_timeout": 0.8,
-        "backoff_min": 0.05, "backoff_max": 0.2, "button_repeat": 0.1}
+FAST = {
+    "connect_timeout": 2,
+    "heartbeat_interval": 0.2,
+    "liveness_timeout": 0.8,
+    "backoff_min": 0.05,
+    "backoff_max": 0.2,
+    "button_repeat": 0.1,
+}
 
 
 async def until(cond, timeout=3.0):
@@ -53,8 +60,12 @@ async def test_connect_sync_and_inputs(proc):
         assert c.available and c.state is ConnectionState.READY
         assert c.get_digital(350) and c.get_analog(361) == 65535 and c.get_serial(100) == "Living Area"
         assert not c.get_digital(351) and not c.has_input(JoinType.DIGITAL, 351)
-        assert states == [ConnectionState.CONNECTING, ConnectionState.REGISTERING,
-                          ConnectionState.SYNCING, ConnectionState.READY]
+        assert states == [
+            ConnectionState.CONNECTING,
+            ConnectionState.REGISTERING,
+            ConnectionState.SYNCING,
+            ConnectionState.READY,
+        ]
         await until(lambda: p.CommandMessage(p.Command.END_OF_QUERY_ACK) in proc.received)
     finally:
         await c.close()
@@ -92,8 +103,11 @@ async def test_outputs(proc, client):
     client.set_analog(6, 1234)
     client.set_serial(7, "hello")
     await until(lambda: len(proc.joins_received()) == 3)
-    assert proc.joins_received() == [JoinUpdate(JoinType.DIGITAL, 5, True), JoinUpdate(JoinType.ANALOG, 6, 1234),
-                                     JoinUpdate(JoinType.SERIAL, 7, "hello")]
+    assert proc.joins_received() == [
+        JoinUpdate(JoinType.DIGITAL, 5, True),
+        JoinUpdate(JoinType.ANALOG, 6, 1234),
+        JoinUpdate(JoinType.SERIAL, 7, "hello"),
+    ]
 
 
 async def test_pulse_and_held_button_repeats(proc, client):
@@ -201,10 +215,12 @@ async def test_auth():
 
 async def test_processor_program_reacts(proc, client):
     """on_join lets a test script the processor, e.g. a scene button lighting its indicator."""
+
     def program(fake, update):
         if update.type is JoinType.DIGITAL and update.join == 351 and update.value:
             fake.set_digital(351, True)
             fake.set_analog(361, 65535)
+
     proc.on_join = program
     await client.pulse(351)
     await until(lambda: client.get_analog(361) == 65535 and client.get_digital(351))

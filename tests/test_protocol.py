@@ -1,4 +1,5 @@
 """Codec tests with byte vectors taken from captures and prior implementations."""
+
 import pytest
 
 from pycrestron_cip import protocol as p
@@ -15,6 +16,7 @@ def decode(data: bytes) -> list[p.Message]:
 
 
 # --- building -------------------------------------------------------------------------
+
 
 def test_build_connect():
     assert p.build_connect(0xA0) == h("01 000b 0000000000 a0 40 ffff f1 01")
@@ -66,6 +68,7 @@ def _assemble(messages):
 
 # --- decoding -------------------------------------------------------------------------
 
+
 def test_decode_digital_analog():
     assert decode(h("05 0006 0000 03 00 64 00")) == [JoinUpdate(JoinType.DIGITAL, 101, True)]
     assert decode(h("05 0006 0000 03 00 64 80")) == [JoinUpdate(JoinType.DIGITAL, 101, False)]
@@ -83,12 +86,25 @@ def test_decode_packed_joins_from_real_dump():
     # Initial dump captured from a 3-Series: several joins share one sub-packet.
     digitals = decode(h("05 0012 0000 0f 00 3100 3b00 6b00 5d01 f301 b70b bf0b"))
     assert [(u.join, u.value) for u in digitals] == [
-        (50, True), (60, True), (108, True), (350, True), (500, True), (3000, True), (3008, True)]
+        (50, True),
+        (60, True),
+        (108, True),
+        (350, True),
+        (500, True),
+        (3000, True),
+        (3008, True),
+    ]
     assert decode(h("05 000c 0000 09 14 000b 0001 000e 0001")) == [
-        JoinUpdate(JoinType.ANALOG, 12, 1), JoinUpdate(JoinType.ANALOG, 15, 1)]
+        JoinUpdate(JoinType.ANALOG, 12, 1),
+        JoinUpdate(JoinType.ANALOG, 15, 1),
+    ]
     nested = decode(h("05 0012 0000 0f 38 000000 01 09 00 1100 da07 db07 dc87"))
-    assert nested == [JoinUpdate(JoinType.DIGITAL, 18, True, 1), JoinUpdate(JoinType.DIGITAL, 2011, True, 1),
-                      JoinUpdate(JoinType.DIGITAL, 2012, True, 1), JoinUpdate(JoinType.DIGITAL, 2013, False, 1)]
+    assert nested == [
+        JoinUpdate(JoinType.DIGITAL, 18, True, 1),
+        JoinUpdate(JoinType.DIGITAL, 2011, True, 1),
+        JoinUpdate(JoinType.DIGITAL, 2012, True, 1),
+        JoinUpdate(JoinType.DIGITAL, 2013, False, 1),
+    ]
 
 
 def test_decode_command_with_data():
@@ -131,7 +147,7 @@ def test_frame_decoder_split_and_coalesced():
     dec = p.FrameDecoder()
     frames = []
     for i in range(len(data)):  # one byte at a time
-        frames += dec.feed(data[i:i + 1])
+        frames += dec.feed(data[i : i + 1])
     assert [t for t, _ in frames] == [0x05, 0x05, 0x0D] and dec.pending == 0
     assert len(p.FrameDecoder().feed(data)) == 3
 

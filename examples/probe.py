@@ -5,6 +5,7 @@ disconnect). No button presses, no join values.
 
     python examples/probe.py HOST IPID [--seconds 120] [--log probe.log] [--json probe.json]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,14 +27,25 @@ async def main() -> None:
     ap.add_argument("--json", default="probe.json")
     args = ap.parse_args()
 
-    logging.basicConfig(filename=args.log, level=logging.DEBUG,
-                        format="%(asctime)s.%(msecs)03d %(levelname)s %(name)s %(message)s", datefmt="%H:%M:%S")
+    logging.basicConfig(
+        filename=args.log,
+        level=logging.DEBUG,
+        format="%(asctime)s.%(msecs)03d %(levelname)s %(name)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
     t0 = time.monotonic()
     events: list[dict] = []
 
     def on_join(u: JoinUpdate) -> None:
-        events.append({"t": round(time.monotonic() - t0, 3), "type": str(u.type), "join": u.join,
-                       "value": u.value, "so": u.smart_object})
+        events.append(
+            {
+                "t": round(time.monotonic() - t0, 3),
+                "type": str(u.type),
+                "join": u.join,
+                "value": u.value,
+                "so": u.smart_object,
+            }
+        )
 
     def on_state(s: ConnectionState) -> None:
         events.append({"t": round(time.monotonic() - t0, 3), "state": str(s)})
@@ -52,8 +64,13 @@ async def main() -> None:
         await client.close()
         snap = client.snapshot()
         with open(args.json, "w") as f:  # noqa: ASYNC230 - one write at exit
-            json.dump({"events": events, "stats": client.stats, "last_error": client.last_error,
-                       "snapshot": snap}, f, default=str, ensure_ascii=False, indent=1)
+            json.dump(
+                {"events": events, "stats": client.stats, "last_error": client.last_error, "snapshot": snap},
+                f,
+                default=str,
+                ensure_ascii=False,
+                indent=1,
+            )
         print("stats", client.stats, "last_error", client.last_error, flush=True)
 
 

@@ -1,0 +1,155 @@
+name: Auto PR to main
+
+on:
+  push:
+    branches: [development]
+
+concurrency:
+  group: auto-pr
+  cancel-in-progress: true
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    # Skip if the push is the release workflow syncing main back into
+    # development (prevents loop; message comes from `git merge origin/main`)
+    if: ${{ !contains(github.event.head_commit.message, 'Merge remote-tracking branch ''origin/main''') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Check for meaningful diff
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Only create PR if development is actually ahead of main
+          if git diff origin/main...origin/development --quiet; then
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build changelog
+        if: steps.diff.outputs.has_diff == 'true'
+        id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_numbers=$(git log origin/main..origin/development --first-parent --format='%s' \
+            | sed -nE 's/^Merge pull request #([0-9]+).*/\1/p; s/.* \(#([0-9]+)\)$/\1/p' \
+            | awk '!seen[$0]++' \
+            | head -50)
+
+          pr_lines=""
+          if [ -n "$pr_numbers" ]; then
+            while IFS= read -r number; do
+              [ -n "$number" ] || continue
+
+              line=$(gh pr view "$number" --json number,title,author \
+                --jq '"- #\(.number) \(.title) (@\(.author.login))"' 2>/dev/null || true)
+
+              if [ -n "$line" ]; then
+                pr_lines="${pr_lines}${line}\n"
+              fi
+            done < <(printf '%s\n' "$pr_numbers")
+          fi
+
+          commit_lines=$(git log origin/main..origin/development --oneline --no-merges | head -50)
+
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo '## Changes since last release'
+            echo ''
+
+            echo '### Merged pull requests'
+            if [ -n "$pr_lines" ]; then
+              printf '%b' "$pr_lines"
+            else
+              echo '- No pull requests detected from the unreleased commit range.'
+            fi
+
+            echo ''
+            echo '### Commits'
+            if [ -n "$commit_lines" ]; then
+              printf '%s\n' "$commit_lines"
+            else
+              echo '- No non-merge commits since main.'
+            fi
+
+            echo ''
+            echo '---'
+            echo '*Auto-generated from `development` branch.*'
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Determine release label
+        if: steps.diff.outputs.has_diff == 'true'
+        id: label
+        run: |
+          # Derive the version bump from conventional-commit messages in the
+          # unreleased range: breaking -> major, feat -> minor, else patch.
+          subjects=$(git log origin/main..origin/development --no-merges --format='%s')
+          bodies=$(git log origin/main..origin/development --no-merges --format='%b')
+
+          label="patch"
+          if printf '%s\n' "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
+            label="minor"
+          fi
+          if printf '%s\n' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:' ||
+             printf '%s\n' "$bodies" | grep -q 'BREAKING CHANGE'; then
+            label="major"
+          fi
+
+          echo "Suggested release label: ${label}"
+          echo "label=${label}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update PR development → main
+        if: steps.diff.outputs.has_diff == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          PR_BODY: ${{ steps.changelog.outputs.body }}
+          LABEL: ${{ steps.label.outputs.label }}
+        run: |
+          rank() {
+            case "$1" in
+              major) echo 3 ;;
+              minor) echo 2 ;;
+              patch) echo 1 ;;
+              *) echo 0 ;;
+            esac
+          }
+
+          # Check if an open PR from development → main already exists
+          existing_pr=$(gh pr list --base main --head development --state open --json number --jq '.[0].number')
+
+          if [ -n "$existing_pr" ]; then
+            echo "Updating PR #$existing_pr body with latest changelog."
+            gh pr edit "$existing_pr" --body "$PR_BODY"
+
+            # Apply the suggested label, but never override a human choice:
+            # leave no-release alone and never downgrade a version label.
+            labels=$(gh pr view "$existing_pr" --json labels --jq '.labels[].name')
+            if printf '%s\n' "$labels" | grep -qx 'no-release'; then
+              echo "PR is labeled no-release; leaving labels untouched."
+              exit 0
+            fi
+            current=$(printf '%s\n' "$labels" | grep -m 1 -xE 'major|minor|patch' | cat)
+            if [ "$(rank "$current")" -lt "$(rank "$LABEL")" ]; then
+              if [ -n "$current" ]; then
+                gh pr edit "$existing_pr" --remove-label "$current" --add-label "$LABEL"
+              else
+                gh pr edit "$existing_pr" --add-label "$LABEL"
+              fi
+              echo "Set release label: $LABEL"
+            fi
+          else
+            gh pr create \
+              --base main \
+              --head development \
+              --title "Merge development into main" \
+              --body "$PR_BODY" \
+              --label "$LABEL"
+          fi

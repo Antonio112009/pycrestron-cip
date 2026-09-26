@@ -11,7 +11,8 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.13"
 authors = [{ name = "Antonio112009" }]
-keywords = ["crestron", "cip", "xpanel", "home-assistant", "asyncio", "home-automation"]
+maintainers = [{ name = "Antonio112009" }]
+keywords = ["crestron", "cip", "crestron-over-ip", "xpanel", "home-assistant", "asyncio", "home-automation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Framework :: AsyncIO",
@@ -26,12 +27,17 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest>=9", "pytest-asyncio>=1.2", "pytest-cov>=7"]
+dev = ["pycrestron-cip[test]", "ruff>=0.16"]
 
 [project.urls]
+Homepage = "https://github.com/Antonio112009/pycrestron-cip"
+Documentation = "https://github.com/Antonio112009/pycrestron-cip#readme"
+"Bug Reports" = "https://github.com/Antonio112009/pycrestron-cip/issues"
 Source = "https://github.com/Antonio112009/pycrestron-cip"
+Changelog = "https://github.com/Antonio112009/pycrestron-cip/releases"
 
 [tool.hatch.version]
-path = "src/pycrestron_cip/__init__.py"
+path = "src/pycrestron_cip/__version__.py"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
