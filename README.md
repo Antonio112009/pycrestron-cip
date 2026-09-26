@@ -31,7 +31,7 @@ you can connect to it. That makes it a good base for Home Assistant integrations
 - Serial joins in UTF-8 and UTF-16, chunked long strings, short and extended forms, smart objects
 - Optional TLS (port 41796) and username/password authentication
 - `FakeProcessor`: a CIP server for your own tests, built from real captures
-- `examples/probe.py`: a read-only tool that records everything a processor sends
+- `pycrestron-cip-probe`: a read-only command that records everything a processor sends
 
 ## Requirements
 
@@ -144,11 +144,11 @@ async def test_scene_indicator():
 
 ## Probing a Processor
 
-`examples/probe.py` connects as a panel, records everything the processor sends and disconnects. It sends only
+`pycrestron-cip-probe` (or `python -m pycrestron_cip.probe`) connects as a panel, records everything the processor sends and disconnects. It sends only
 what the protocol requires (no button presses, no join values):
 
 ```bash
-python examples/probe.py 192.168.1.10 0x03 --seconds 120 --log probe.log --json probe.json
+pycrestron-cip-probe 192.168.1.10 0x03 --seconds 120 --log probe.log --json probe.json
 ```
 
 Stop anything else that uses the same IP ID first. Please do not publish probe logs from a real installation:
