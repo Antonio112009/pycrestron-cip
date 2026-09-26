@@ -108,6 +108,7 @@ class SerialChunk:
 @dataclass(frozen=True, slots=True)
 class CommandMessage:
     command: int
+    data: bytes = b""  # extra bytes; e.g. 0x19 carries a list of 2-byte join numbers (meaning unknown)
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,7 +257,7 @@ def _decode_sub(kind: int, body: bytes, wide: bool, so: int | None) -> Iterator[
         case Cresnet.SERIAL | Cresnet.SERIAL_SHORT:
             yield SerialChunk(int.from_bytes(body[0:2], "big") + 1, body[2], body[3:], so)
         case Cresnet.COMMAND:
-            yield CommandMessage(body[0])
+            yield CommandMessage(body[0], bytes(body[1:]))
         case Cresnet.DATE_TIME:
             yield DateTimeMessage(body)
         case Cresnet.SMART_OBJECT | Cresnet.SMART_OBJECT_EXTENDED:

@@ -409,6 +409,8 @@ class CipClient:
                 for (kind, join, _), value in self._outputs.items():
                     self._write_output(kind, join, value)
                 _resolve(self._waiters.get("synced"), True)
+            case p.CommandMessage(command=command, data=data) if command not in p.Command:
+                _log.debug("Unhandled command 0x%02x %s", command, data.hex())
             case p.ProgramStatusMessage(status=p.ProgramStatus.READY):
                 _resolve(self._waiters.get("program"), True)
             case p.ProgramStatusMessage(status=status):

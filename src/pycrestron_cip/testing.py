@@ -26,6 +26,22 @@ def analog_frame(join: int, value: int) -> bytes:
     return p.frame(p.FrameType.DATA, b"\x00\x00\x05\x14" + (join - 1).to_bytes(2, "big") + value.to_bytes(2, "big"))
 
 
+def packed_digital_frame(values: dict[int, bool]) -> bytes:
+    """Several digitals in ONE sub-packet, the way a processor sends its initial dump."""
+    body = b"".join(bytes([(j - 1) & 0xFF, ((j - 1) >> 8) | (0 if v else 0x80)]) for j, v in values.items())
+    return p.frame(p.FrameType.DATA, b"\x00\x00" + bytes([len(body) + 1, p.Cresnet.DIGITAL]) + body)
+
+
+def packed_analog_frame(values: dict[int, int]) -> bytes:
+    body = b"".join((j - 1).to_bytes(2, "big") + v.to_bytes(2, "big") for j, v in values.items())
+    return p.frame(p.FrameType.DATA, b"\x00\x00" + bytes([len(body) + 1, p.Cresnet.ANALOG]) + body)
+
+
+def _chunks(values: dict, size: int) -> list[dict]:
+    items = list(values.items())
+    return [dict(items[i:i + size]) for i in range(0, len(items), size)]
+
+
 def serial_frame(join: int, text: str, flags: int = p.SERIAL_COMPLETE, *, utf16: bool = False) -> bytes:
     data = text.encode("utf-16-le" if utf16 else "utf-8")
     flags |= p.SERIAL_UTF16 if utf16 else 0
@@ -37,10 +53,11 @@ class FakeProcessor:
     """Minimal CIP server on 127.0.0.1 with a join table and a record of what panels sent."""
 
     def __init__(self, ipids: set[int] | None = None, *, program_status: int = p.ProgramStatus.READY,
-                 username: str | None = None, password: str | None = None) -> None:
+                 username: str | None = None, password: str | None = None, packed_dump: bool = True) -> None:
         self.ipids = ipids if ipids is not None else {0x03}
         self.program_status = program_status
         self.credentials = f"{username}:{password}" if username is not None else None
+        self.packed_dump = packed_dump  # pack the initial dump like a real processor (up to 32 per sub-packet)
         self.digital: dict[int, bool] = {}
         self.analog: dict[int, int] = {}
         self.serial: dict[int, str] = {}
@@ -172,8 +189,14 @@ class FakeProcessor:
 
     def _dump(self, writer: asyncio.StreamWriter) -> None:
         frames = [p.build_command(p.Command.UPDATE_REQUEST)]
-        frames += [digital_frame(j, v) for j, v in self.digital.items() if v]
-        frames += [analog_frame(j, v) for j, v in self.analog.items() if v]
+        digitals = {j: v for j, v in self.digital.items() if v}
+        analogs = {j: v for j, v in self.analog.items() if v}
+        if self.packed_dump:
+            frames += [packed_digital_frame(c) for c in _chunks(digitals, 32)]
+            frames += [packed_analog_frame(c) for c in _chunks(analogs, 32)]
+        else:
+            frames += [digital_frame(j, v) for j, v in digitals.items()]
+            frames += [analog_frame(j, v) for j, v in analogs.items()]
         frames += [serial_frame(j, v) for j, v in self.serial.items() if v]
         frames += [p.build_command(p.Command.PENULTIMATE), p.build_command(p.Command.END_OF_QUERY)]
         for data in frames:

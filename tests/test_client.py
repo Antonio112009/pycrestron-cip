@@ -208,3 +208,17 @@ async def test_processor_program_reacts(proc, client):
     proc.on_join = program
     await client.pulse(351)
     await until(lambda: client.get_analog(361) == 65535 and client.get_digital(351))
+
+
+async def test_initial_dump_packed_like_a_processor(proc):
+    # 40 digitals and 3 analogs arrive packed (32 per sub-packet); every one must reach the cache
+    for j in range(2001, 2041):
+        proc.digital[j] = True
+    proc.analog.update({361: 100, 362: 200, 363: 300})
+    c = CipClient("127.0.0.1", 0x03, port=proc.port, **FAST)
+    await c.connect()
+    try:
+        assert all(c.get_digital(j) for j in range(2001, 2041))
+        assert [c.get_analog(j) for j in (361, 362, 363)] == [100, 200, 300]
+    finally:
+        await c.close()

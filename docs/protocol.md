@@ -58,8 +58,10 @@ show different rooms, therefore arrive only when they change relative to the pre
   first pair, losing most of the dump. Live changes afterwards arrived one per packet.
 - The processor never sent a heartbeat request (0x0D) in 2 minutes; it only answered ours (0x0E).
 - Connect result was `0000001f`; program status on connect `0f 02` (ready). Registration to synced: 0.7 s.
-- Unknown: command `03 19` with ASCII payloads (`CLCM`, `jBjWjYje`), and digitals 27213/27217/27218/27221 = off
-  sent twice right after sync.
+- Command `03 19` right after the dump carries 2-byte big-endian numbers: `434c 434d` (17228, 17229) and
+  `6a42 6a57 6a59 6a65` (27202, 27223, 27225, 27237). Then the processor sends digitals 27213, 27217, 27218,
+  27221 = off (twice). Both look like the panel's reserved/system join ranges (17xxx, 27xxx), not program
+  joins. Meaning unconfirmed: the library keeps the bytes in `CommandMessage.data` and logs them at DEBUG.
 
 ## Prior art
 

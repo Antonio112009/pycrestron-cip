@@ -91,6 +91,11 @@ def test_decode_packed_joins_from_real_dump():
                       JoinUpdate(JoinType.DIGITAL, 2012, True, 1), JoinUpdate(JoinType.DIGITAL, 2013, False, 1)]
 
 
+def test_decode_command_with_data():
+    # seen right after the initial dump on a 3-Series; kept raw, meaning unknown
+    assert decode(h("05 0009 0000 06 03 19 434c434d")) == [p.CommandMessage(0x19, h("434c434d"))]
+
+
 def test_decode_serial_variants():
     assert _assemble(decode(h("12 000a 0000 0006 34 0009 03 4869"))) == "Hi"
     assert _assemble(decode(p.build_serial(3, "Кухня")[0])) == "Кухня"
