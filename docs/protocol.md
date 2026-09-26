@@ -52,7 +52,7 @@ Where sources disagree, both views are noted. **Verified** marks behaviour we ob
 **differ from what it believes the panel shows**. Values on "paged" panels, where the same joins
 show different rooms, therefore arrive only when they change relative to the previous page.
 
-**Verified** on a 3-Series (2026-09-26, read-only probe, `examples/probe.py`):
+**Verified** on a 3-Series (2026-09-26, read-only probe, `pycrestron-cip-probe`):
 - The initial dump **packs several joins into one sub-packet**: `0f 00` + 7 digital pairs, `09 14` + 2 analog
   pairs, smart-object blocks of 32 digitals. `python-cipclient` (and this library before the fix) read only the
   first pair, losing most of the dump. Live changes afterwards arrived one per packet.
