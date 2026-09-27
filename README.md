@@ -33,6 +33,47 @@ you can connect to it. That makes it a good base for Home Assistant integrations
 - `FakeProcessor`: a CIP server for your own tests, built from real captures
 - `pycrestron-cip-probe`: a read-only command that records everything a processor sends
 
+## Why pycrestron-cip
+
+Most open-source CIP clients stop at "it connects". We read the source of every panel-side CIP client we could find,
+ran their parsers against a fake processor, and built this library to close the gaps. Then we verified it on a real
+processor.
+
+| | pycrestron-cip | Other open-source CIP clients¹ |
+|---|---|---|
+| Reads **every** join in a packed sub-packet (processors send their initial dump this way) | ✅ digital and analog, verified on a 3-Series | none do both; 6 of 7 keep only the first digital join |
+| Answers the processor's heartbeat requests | ✅ | 1 of 7 |
+| Notices a silent, half-open connection by itself | ✅ liveness timeout | 0 of 7 |
+| Reconnects with backoff and replays latched outputs | ✅ both | backoff: 2 of 7 · replay: 2 of 7 |
+| Frames split across TCP reads | ✅ | 2 of 6 TCP clients |
+| Serial text: UTF-8, UTF-16 (unicode flag), long strings sent in chunks | ✅ all three | UTF-16: 0 of 7 · chunks: 0 of 7 |
+| A non-ASCII byte cannot break the receive path | ✅ | 3 of the 6 that decode serials |
+| Smart-object joins, with the object ID | ✅ inbound | 0 of 7 complete |
+| A fake processor you can use in your own tests | ✅ `pycrestron_cip.testing` | 0 of 7 ship one |
+| Automated tests | ✅ 41 tests, 94 % coverage, CI on Python 3.13 and 3.14 | 3 of 7 |
+
+¹ Seven XPanel-style CIP clients in Python, Swift, JavaScript and Node, each reviewed at its latest commit in
+September 2026. Projects that emulate a processor, proxy TLS on the processor, or use a different protocol are not
+counted. Other projects were tested against a fake processor, not real hardware.
+
+**Why it matters**
+
+- **Correct state from the first second.** After connecting, a processor packs several joins into one sub-packet of
+  its initial dump. A client that reads only the first one starts with most values missing, and a paged panel may not
+  resend them until they change. That is how a light ends up shown as off while it is on.
+- **Connections that heal themselves.** A client that never notices a half-open socket can sit "connected" while
+  nothing arrives. This one sends and answers heartbeats, times out when the processor goes quiet, reconnects with
+  backoff and restores its outputs.
+- **Any text, any language.** Room names and labels come through intact: UTF-8, UTF-16 and long chunked strings,
+  with a safe fallback for stray bytes.
+- **Built to be depended on.** Pure asyncio, fully typed, no runtime dependencies, so it drops into Home Assistant
+  and other asyncio apps. `FakeProcessor` and `pycrestron-cip-probe` let you test your integration without, and
+  then against, real hardware.
+
+**Honest limits:** sending to smart objects is not supported yet; TLS and username/password authentication are
+implemented but not yet verified on hardware (captures welcome); the WebSocket/CH5 transport used by some 4-Series
+web panels is not covered.
+
 ## Requirements
 
 - Python 3.13 or newer
